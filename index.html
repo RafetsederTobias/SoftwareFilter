@@ -8,5 +8,72 @@
 <body>
   <h1>Welcome to My GitHub Pages Website!</h1>
   <p>This is a simple static website hosted on GitHub Pages.</p>
+  <button id="processButton">Process Files</button>
+
+    <pre id="output"></pre>
+
+<script>
+    document.getElementById('processButton').addEventListener('click', function() {
+        // Fetch the JSON file
+        fetch('filter.json')
+            .then(response => response.json())
+            .then(jsonData => {
+                const softwareNames = jsonData.software_names;
+
+                // Fetch all XML files from the same folder
+                fetchXMLFiles()
+                    .then(xmlFiles => {
+                        let output = '';
+                        xmlFiles.forEach(xmlContent => {
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
+                            const reports = xmlDoc.getElementsByTagName('UNNAMED_x0020_REPORT');
+
+                            const remainingSoftware = [];
+                            Array.from(reports).forEach(report => {
+                                const softwareElement = report.getElementsByTagName('Software')[0];
+                                if (softwareElement && !softwareNames.includes(softwareElement.textContent)) {
+                                    remainingSoftware.push(softwareElement.textContent);
+                                }
+                            });
+
+                            // Output the remaining software names
+                            if (remainingSoftware.length > 0) {
+                                output += `Remaining software names in file:\n`;
+                                remainingSoftware.forEach(software => {
+                                    output += `${software}\n`;
+                                });
+                            }
+                        });
+                        document.getElementById('output').textContent = output;
+                    })
+                    .catch(error => console.error('Error fetching XML files:', error));
+            })
+            .catch(error => console.error('Error fetching JSON file:', error));
+    });
+
+    // Fetch XML files from the same folder
+    function fetchXMLFiles() {
+        return new Promise((resolve, reject) => {
+            const xmlFiles = ['file1.xml', 'file2.xml']; // List all your XML files here
+            const filePromises = xmlFiles.map(fileName =>
+                fetch(fileName)
+                    .then(response => response.text())
+                    .catch(err => {
+                        console.error('Failed to load XML file:', fileName, err);
+                        return null;
+                    })
+            );
+
+            Promise.all(filePromises)
+                .then(fileContents => {
+                    // Filter out any failed file loads (null values)
+                    const validFileContents = fileContents.filter(content => content !== null);
+                    resolve(validFileContents);
+                })
+                .catch(reject);
+        });
+    }
+</script>
 </body>
 </html>
